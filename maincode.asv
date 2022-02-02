@@ -1,0 +1,107 @@
+clc
+
+clear all 
+close all
+
+rng(1)
+
+%process data into input, X and target, y
+load('processinput')
+load('target')
+X=processinput;
+y=double(target);
+
+%remove features with less feature weights
+X(:,[8,12,13,15])=[];
+
+%split data into training and testing
+idx=crossvalind('kfold',y,5);
+
+%train input
+trainX=X(idx~=5,:);
+testX=X(idx==5,:);
+
+%test input
+trainY=y(idx~=5);
+testY=y(idx==5);
+
+
+%train classifier with ID3 algorithm
+data=[trainX trainY];
+id3tree=ID3.buildTree(data);
+predictions=ID3.predict(id3tree,testX);
+C=confusionmat(testY,predictions);
+accuracy=sum(diag(C))/sum(C(:));
+fprintf('Accuracy of ID3 model= %2.5f\n',accuracy)
+
+%train classifier with Ca4.5 algorithm
+data=[trainX trainY];
+ca4_5tree=ca4_5.buildTree(data);
+predictions=ca4_5.predict(ca4_5tree,testX);
+C=confusionmat(testY,predictions);
+accuracy=sum(diag(C))/sum(C(:));
+fprintf('Accuracy of ca4.5 model= %2.5f\n',accuracy)
+
+
+%train cart model
+model=fitctree(trainX,trainY);
+
+%predict the testX
+predictions=predict(model,testX);
+
+%plot the confusion tree 
+C=confusionmat(testY,predictions);
+accuracy=sum(diag(C))/sum(C(:));
+
+%compute the accuracy
+fprintf('Accuracy of cart model= %2.5f\n',accuracy)
+
+
+cp=classperf(double(target));
+
+truepositives=[];
+truenegatives=[];
+falsepositives=[];
+falsenegatives=[];
+
+precisions=[];
+recalls=[];
+fscores=[];
+accuracys=[];
+
+for i=1:3
+   
+    actual=zeros(1,length(testY));
+    actual(testY==i)=1;
+    
+    predict=zeros(1,length(predictions));
+    predict(predictions==i)=1;
+    
+    [truepositive,truenegative,falsepositive,falsenegative,precision,...
+        recall,fscore,accuracy]=CalcMetrics(predict,actual);
+    
+    truepositives(i)=truepositive;
+    truenegatives(i)=truenegative;
+    falsepositives(i)=falsepositive;
+    falsenegatives(i)=falsenegative;
+    
+    precisions(i)=precision;
+    recalls(i)=recall;
+    fscores(i)=fscore;
+    accuracys(i)=accuracy;
+    
+end
+
+ truepositives=truepositives';
+ truenegatives=truenegatives';
+ falsepositives=falsepositives';
+ falsenegatives=falsenegatives';
+    
+ precisions=precisions';
+ recalls=recalls';
+ fscores=fscores';
+ accuracys=accuracys';
+ 
+ R={};
+ 
+T=table(truepositives,truenegatives,falsepositives,falsenegatives,precisions,accuracys,recalls)
